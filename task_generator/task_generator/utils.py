@@ -17,13 +17,14 @@ def generate_freespace_indices(map_: OccupancyGrid) -> tuple:
     return indices_y_x
 
 
-def get_random_pos_on_map(free_space_indices, map_: OccupancyGrid, safe_dist: float, forbidden_zones: list = None):
+def get_random_pos_on_map(free_space_indices, map_: OccupancyGrid, safe_dist: float = 0, forbidden_zones: list = None):
     """
     Args:
         indices_y_x(tuple): a 2 elementary tuple stores the indices of the non-occupied cells, the first element is the y-axis indices,
             the second element is the x-axis indices.
-        map (OccupancyGrid): map proviced by the ros map service
+        map_ (OccupancyGrid): map proviced by the ros map service
         forbidden_zones (list of 3 elementary tuple(x,y,r)): a list of zones which is forbidden
+        safe_dist: additional distance to the radius in the forbidden_zones.
     Returns:
        x_in_meters,y_in_meters,theta
     """

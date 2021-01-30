@@ -4,6 +4,7 @@ from typing import Union
 import re
 import yaml
 import os
+from pathlib import Path
 from flatland_msgs.srv import DeleteModel, DeleteModelRequest
 from flatland_msgs.srv import SpawnModel, SpawnModelRequest
 from flatland_msgs.srv import MoveModel, MoveModelRequest
@@ -50,7 +51,7 @@ class ObstaclesManager:
         # self._srv_sim_step = rospy.ServiceProxy('step_world', StepWorld, persistent=True)
 
         self.update_map(map_)
-        self.obstacle_name_list = []
+        self.obstacles_metadata = {}
         self._obstacle_name_prefix = 'obstacle'
         # remove all existing obstacles generated before create an instance of this class
         self.remove_obstacles()
@@ -76,15 +77,51 @@ class ObstaclesManager:
         Returns:
             self.
         """
+        def get_obstacle_radius(model_yaml_path: str):
+            """a helper function to get the obstacle radius from the yaml file,which is 
+            useful to set the position of the obstacle because we dont want the goal is overlapped with a obstacle.
+
+            Args:
+                model_yaml_path (str): [description]
+
+
+            Returns:
+                [type]: [description]
+            """
+            model_data = yaml.safe_load(Path(model_yaml_path).open())
+            # if the yaml is automatically generated in class
+            # in the section of bodies, only one body is defined
+            footprints = None
+            if len(model_data['bodies']) == 1:
+                footprints = model_data['bodies'][0]['footprints']
+            else:
+                # otherwise we take body with the name 'base' into consideration.
+                for body in model_data['bodies']:
+                    if body['name'] == 'base':
+                        footprints = body['footprints']
+                        break
+            if footprints is None:
+                raise yaml.YAMLError(
+                    f"Cant correctly parse the yaml file with the path {model_yaml_path}, please make sure \
+                         under the the bodies section only one body inside or at least one body with the name 'base' ")
+            radius = 0
+            # iterater over all footprints and estimate the max radius of the obstacle
+            for footprint in footprints:
+                if footprint["type"] == "polygon":
+                    curr_radius= max( ((pow(point[0],2)+pow(point[1],2)))**0.5 for point in footprint['points'])
+                else:
+                    curr_radius = footprint['radius']
+                radius = max(radius,curr_radius)
+            return radius
+            
         assert os.path.isabs(
             model_yaml_file_path), "The yaml file path must be absolute path, otherwise flatland can't find it"
-
         # the name of the model yaml file have the format {model_name}.model.yaml
         model_name = os.path.basename(model_yaml_file_path).split('.')[0]
         name_prefix = self._obstacle_name_prefix + '_' + model_name
         count_same_type = sum(
             1 if obstacle_name.startswith(name_prefix) else 0
-            for obstacle_name in self.obstacle_name_list)
+            for obstacle_name in self.obstacles_metadata)
 
         for instance_idx in range(count_same_type, count_same_type + num_obstacles):
             max_num_try = 2
@@ -118,7 +155,9 @@ class ObstaclesManager:
                     rospy.logwarn(response.message)
                     i_curr_try += 1
                 else:
-                    self.obstacle_name_list.append(spawn_request.name)
+                    obstacle_radius = get_obstacle_radius(model_yaml_file_path)
+                    metadata = {'radius':obstacle_radius}
+                    self.obstacles_metadata[spawn_request.name] = metadata
                     break
             if i_curr_try == max_num_try:
                 raise rospy.ServiceException(f" failed to register obstacles")
@@ -189,9 +228,9 @@ class ObstaclesManager:
         self.register_obstacles(1, model_path, start_pos)
         os.remove(model_path)
 
-    def register_static_obstacle_circle(self,x,y,circle):
-        model_path= self._generate_static_obstacle_circle_yaml(circle)
-        self.register_obstacles(1, model_path, [x,y,0])
+    def register_static_obstacle_circle(self, x, y, circle):
+        model_path = self._generate_static_obstacle_circle_yaml(circle)
+        self.register_obstacles(1, model_path, [x, y, 0])
         os.remove(model_path)
 
     def register_dynamic_obstacle_circle_tween2(self, obstacle_name: str, obstacle_radius: float, linear_velocity: float, start_pos: Pose2D, waypoints: list, is_waypoint_relative: bool = True,  mode: str = "yoyo", trigger_zones: list = []):
@@ -229,7 +268,7 @@ class ObstaclesManager:
             theta (float): [description]
         """
 
-        assert obstacle_name in self.obstacle_name_list, "can't move the obstacle because it has not spawned in the flatland"
+        assert obstacle_name in self.obstacles_, "can't move the obstacle because it has not spawned in the flatland"
         # call service move_model
 
         srv_request = MoveModelRequest()
@@ -249,10 +288,10 @@ class ObstaclesManager:
             active_obstacle_rate (float): a parameter change the number of the obstacles within the map
             forbidden_zones (list): a list of tuples with the format (x,y,r),where the the obstacles should not be reset.
         """
-        active_obstacle_names = random.sample(self.obstacle_name_list, int(
-            len(self.obstacle_name_list) * active_obstacle_rate))
+        active_obstacle_names = random.sample(self.obstacles_metadata.keys(), int(
+            len(self.obstacles_metadata) * active_obstacle_rate))
         non_active_obstacle_names = set(
-            self.obstacle_name_list) - set(active_obstacle_names)
+            self.obstacles_metadata.keys()) - set(active_obstacle_names)
 
         # non_active obstacles will be moved to outside of the map
         resolution = self.map.info.resolution
@@ -265,9 +304,10 @@ class ObstaclesManager:
         for obstacle_name in active_obstacle_names:
             move_model_request = MoveModelRequest()
             move_model_request.name = obstacle_name
+            obstacle_radius = self.obstacles_metadata[obstacle_name]['radius']
             # TODO 0.2 is the obstacle radius. it should be set automatically in future.
             move_model_request.pose.x, move_model_request.pose.y, move_model_request.pose.theta = get_random_pos_on_map(
-                self._free_space_indices, self.map, 0.2, forbidden_zones)
+                self._free_space_indices, self.map, obstacle_radius, forbidden_zones,)
 
             self._srv_move_model(move_model_request)
 
@@ -384,7 +424,7 @@ class ObstaclesManager:
             yaml.dump(dict_file, fd)
         return yaml_path, obstacle_center
 
-    def _generate_static_obstacle_circle_yaml(self,radius):
+    def _generate_static_obstacle_circle_yaml(self, radius):
         # since flatland  can only config the model by parsing the yaml file, we need to create a file for every random obstacle
         tmp_folder_path = os.path.join(rospkg.RosPack().get_path(
             'simulator_setup'), 'tmp_random_obstacles')
@@ -502,8 +542,8 @@ class ObstaclesManager:
         return yaml_path
 
     def remove_obstacle(self, name: str):
-        if len(self.obstacle_name_list) != 0:
-            assert name in self.obstacle_name_list
+        if len(self.obstacles_metadata) != 0:
+            assert name in self.obstacles_metadata
         srv_request = DeleteModelRequest()
         srv_request.name = name
         response = self._srv_delete_model(srv_request)
@@ -520,7 +560,7 @@ class ObstaclesManager:
             prefix_names (Union[list,None], optional): a list of group names. if it is None then all obstacles will
                 be deleted. Defaults to None.
         """
-        if len(self.obstacle_name_list) != 0:
+        if len(self.obstacles_metadata) != 0:
             if prefix_names is None:
                 group_names = '.'
                 re_pattern = "^(?:" + '|'.join(group_names) + r')\w*'
@@ -528,11 +568,11 @@ class ObstaclesManager:
                 re_pattern = "^(?:" + '|'.join(prefix_names) + r')\w*'
             r = re.compile(re_pattern)
             to_be_removed_obstacles_names = list(
-                filter(r.match, self.obstacle_name_list))
+                filter(r.match, list(self.obstacles_metadata.keys())))
             for n in to_be_removed_obstacles_names:
                 self.remove_obstacle(n)
-            self.obstacle_name_list = list(
-                set(self.obstacle_name_list)-set(to_be_removed_obstacles_names))
+            for name in to_be_removed_obstacles_names:
+                self.obstacles_metadata.pop(name)
         else:
             # it possible that in flatland there are still obstacles remaining when we create an instance of
             # this class.

@@ -66,10 +66,10 @@ class RandomTask(ABSTask):
                         forbidden_zones=[
                             (start_pos.x,
                                 start_pos.y,
-                                self.robot_manager.ROBOT_RADIUS),
+                                1.3*self.robot_manager.ROBOT_RADIUS),
                             (goal_pos.x,
                                 goal_pos.y,
-                                self.robot_manager.ROBOT_RADIUS)])
+                                1.3*self.robot_manager.ROBOT_RADIUS)])
                     break
                 except rospy.ServiceException as e:
                     rospy.logwarn(repr(e))

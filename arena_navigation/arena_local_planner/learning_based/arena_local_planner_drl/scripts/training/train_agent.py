@@ -20,13 +20,13 @@ from arena_navigation.arena_local_planner.learning_based.arena_local_planner_drl
 """ will be used upon initializing new agent """
 robot = "myrobot"
 gamma = 0.99
-n_steps = 128
-ent_coef = 0.01
-learning_rate = 2.5e-4
+n_steps = 840
+ent_coef = 0.005
+learning_rate = 0.0003
 vf_coef = 0.5
 max_grad_norm = 0.5
 gae_lambda = 0.95
-batch_size = 64
+batch_size = 15
 n_epochs = 4
 clip_range = 0.2
 reward_fnc = "rule_01"
@@ -34,7 +34,6 @@ discrete_action_space = False
 normalize = True
 start_stage = 1
 task_mode = "staged"    # custom, random or staged
-normalize = True
 ##########################
 
 
@@ -115,14 +114,14 @@ if __name__ == "__main__":
     n_envs = 1
     task_manager = get_predefined_task(params['task_mode'], params['curr_stage'], PATHS)
     env = DummyVecEnv(
-        [lambda: FlatlandEnv(task_manager, PATHS.get('robot_setting'), PATHS.get('robot_as'), params['reward_fnc'], params['discrete_action_space'], goal_radius=1.00, max_steps_per_episode=200)] * n_envs)
+        [lambda: FlatlandEnv(task_manager, PATHS.get('robot_setting'), PATHS.get('robot_as'), params['reward_fnc'], params['discrete_action_space'], goal_radius=0.6, max_steps_per_episode=200)] * n_envs)
     if params['normalize']:
         env = VecNormalize(env, training=True, norm_obs=True, norm_reward=False, clip_reward=15)
 
     # instantiate eval environment
     trainstage_cb = InitiateNewTrainStage(TaskManager=task_manager, TreshholdType="rew", rew_threshold=14.5, task_mode=params['task_mode'], verbose=1)
     eval_env = Monitor(FlatlandEnv(
-        task_manager, PATHS.get('robot_setting'), PATHS.get('robot_as'), params['reward_fnc'], params['discrete_action_space'], goal_radius=1.00, max_steps_per_episode=250),
+        task_manager, PATHS.get('robot_setting'), PATHS.get('robot_as'), params['reward_fnc'], params['discrete_action_space'], goal_radius=0.6, max_steps_per_episode=200),
         PATHS.get('eval'), info_keywords=("done_reason",))
     eval_env = DummyVecEnv([lambda: eval_env])
     if params['normalize']:

@@ -62,7 +62,7 @@ def get_random_pos_on_map(free_space_indices, map_: OccupancyGrid, safe_dist: fl
     if forbidden_zones is None:
         forbidden_zones = []
 
-    n_freespace_cells = len(free_space_indices[0])
+    n_freespace_cells = len(free_space_indices[0])-1
     pos_valid = False
     n_check_failed = 0
     x_in_meters, y_in_meters = None, None

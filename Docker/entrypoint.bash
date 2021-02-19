@@ -25,16 +25,28 @@ echo "CONFIG_FILE is : $CONFIG_FILE"
 echo "map_folder_name is : $MAP_FOLDER"
 echo "===================================================="
 
-(
-    source "/root/.python_env/rosnav/bin/activate"
-    roslaunch arena_bringup start_training.launch num_envs:=${NUM_SIM_ENVS} map_folder_name:=${MAP_FOLDER}
-)&
 # (
-#     roslaunch arena_bringup visualization_training.launch ns:=sim_1
+#     source "/root/.python_env/rosnav/bin/activate"
+#     roslaunch arena_bringup start_training.launch num_envs:=${NUM_SIM_ENVS} map_folder_name:=${MAP_FOLDER}
 # )&
-(
-    sleep 2
-    source "/root/.python_env/rosnav/bin/activate"
-    roscd arena_local_planner_drl
-    python scripts/training/train_agent.py --agent ${AGENT_NAME} --config ${CONFIG_FILE}
-)
+# # (
+# #     roslaunch arena_bringup visualization_training.launch ns:=sim_1
+# # )&
+# (
+#     sleep 2
+#     source "/root/.python_env/rosnav/bin/activate"
+#     roscd arena_local_planner_drl
+#     python scripts/training/train_agent.py --agent ${AGENT_NAME} --config ${CONFIG_FILE}
+# )
+(screen -dmS rospython bash -c "source ./rospython.bash") & 
+(screen -S roslaunch bash -c "source ./roslaunch.bash")
+
+
+# &(
+#     sleep 5
+#     screen -dS ros_python bash -c "source ./ros_python.bash")
+
+# while [ "1" = "1" ]
+# do
+# sleep 5
+# done

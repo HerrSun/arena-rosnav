@@ -1,0 +1,55 @@
+<launch>
+	
+    <!-- move base -->
+    <arg name="model" default="burger"/>
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+        <rosparam file="$(find conventional)/config/costmap_common_params_$(arg model).yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find conventional)/config/costmap_common_params_$(arg model).yaml" command="load" ns="local_costmap" />   
+        <rosparam file="$(find conventional)/config/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find conventional)/config/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find sarl_star)/config/base_local_planner_params.yaml" command="load" />
+        <rosparam file="$(find sarl_star)/config/dwa_local_planner_params.yaml" command="load" />
+        <rosparam file="$(find sarl_star)/config/nav_obstacles_params.yaml" command="load" />
+        
+        <param name="global_costmap/global_frame" value="$(arg global_frame_id)"/>
+        <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS"/>
+        <param name="global_costmap/robot_base_frame" value="$(arg base_frame_id)"/>
+        <param name="local_costmap/global_frame" value="$(arg odom_frame_id)"/>
+        <param name="local_costmap/robot_base_frame" value="$(arg base_frame_id)"/>
+        <param name="DWAPlannerROS/global_frame_id" value="$(arg odom_frame_id)"/>  
+
+        <remap from="cmd_vel" to="navigation_velocity_smoother/raw_cmd_vel"/>
+        <remap from="odom" to="$(arg odom_topic)"/>
+    </node>
+    
+    
+    <arg name="tb3_speed" default="0.3"/>
+    <arg name="file" default="cadrl_node_tb3.py"/>
+    <!-- Launch neural net ros wrapper -->
+  <node pkg="sarl_star" type="sarl_star_node_tb3.py" name="sarl_star" output="screen" />
+        
+        <!-- Publications -->
+        <remap from="~other_vels" to="other_vels"/>
+        <remap from="~/cmd_vel_mux/input/teleop" to="/cmd_vel"/>
+        <remap from="~pose_marker" to="pose_marker"/>
+        <remap from="~path_marker" to="path_marker"/>
+        <remap from="~goal_path_marker" to="goal_path_marker"/>
+        <remap from="~agent_marker" to="other_agents_marker"/>
+        <remap from="~agent_markers" to="other_agents_markers"/>
+        
+        <!-- Subscriptions -->
+        <remap from="~pose" to="/odom"/>
+        <remap from="~velocity" to="velocity"/>
+        <remap from="~safe_actions" to="local_path_finder/safe_actions"/>
+        <remap from="~planner_mode" to="planner_fsm/mode"/>
+        <remap from="~goal" to="/goal"/>
+        <remap from="~subgoal" to="/plan_manager/subgoal"/>
+        <remap from="~clusters" to="/obst_odom"/>
+        <remap from="~peds" to="ped_manager/ped_recent"/>
+        
+        <!-- Parameters -->
+        <param name="~tb3_speed" value="$(arg tb3_speed)"/>
+
+    </node>
+
+</launch>

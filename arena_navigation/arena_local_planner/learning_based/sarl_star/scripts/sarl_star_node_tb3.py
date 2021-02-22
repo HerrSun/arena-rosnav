@@ -82,8 +82,8 @@ class RobotAction(object):
         # self.Is_lg_Received = True      # debug without ob detection method
         self.IsAMCLReceived = False
         # self.IsAMCLReceived = True    # debug without ob detection method   
-        self.IsObReceived = False
-        # self.IsObReceived = True    # debug without ob detection method
+        # self.IsObReceived = False
+        self.IsObReceived = True    # debug without ob detection method
         self.Is_gc_Received = False
         self.getStartPoint = False
         self.Is_lg_Reached = False
@@ -117,14 +117,15 @@ class RobotAction(object):
         # self.global_costmap_sub = rospy.Subscriber('/move_base/global_costmap/costmap', OccupancyGrid, self.get_gc)
 
         # debug without ob detection method
-        self.robot_pose_sub = rospy.Subscriber('/odom', PoseWithCovarianceStamped, self.update_robot_pos)
+        self.robot_pose_sub = rospy.Subscriber('/odom', Odometry, self.update_robot_pos)
         self.robot_odom_sub = rospy.Subscriber('/odom', Odometry, self.robot_vel_on_map_calculator)
         self.people_sub = rospy.Subscriber('~mode', PlannerMode, self.update_humans)
         self.goal_sub = rospy.Subscriber('plan_manager/subgoal', PoseStamped, self.get_goal_on_map)
         self.global_costmap_sub = rospy.Subscriber('/move_base/global_costmap/costmap', OccupancyGrid, self.get_gc)
         
         # ROS publishers
-        self.cmd_vel_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=1)
+        # self.cmd_vel_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=1)
+        self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
         self.goal_marker_pub = rospy.Publisher('/goal_marker', Marker, queue_size=1)
         self.action_marker_pub = rospy.Publisher('/action_marker', Marker, queue_size=1)
         self.trajectory_marker_pub = rospy.Publisher('/trajectory_marker', Marker, queue_size=1)
@@ -372,7 +373,8 @@ if __name__ == '__main__':
                 if t > TIME_LIMIT:
                     rospy.loginfo("Timeout. Travel time: %s s." % t)
                     break
-            rate.sleep()
+            # rospy.spin()
+            rate.sleep()        
 
     except rospy.ROSInterruptException as e:
         raise e

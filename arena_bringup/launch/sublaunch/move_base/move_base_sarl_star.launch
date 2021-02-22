@@ -1,7 +1,12 @@
 <launch>
 	
     <!-- move base -->
+    <arg name="odom_frame_id"   default="odom"/>
+    <arg name="base_frame_id"   default="base_footprint"/>
+    <arg name="global_frame_id" default="map"/>
+    <arg name="odom_topic" default="odom" />
     <arg name="model" default="burger"/>
+
     <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
         <rosparam file="$(find conventional)/config/costmap_common_params_$(arg model).yaml" command="load" ns="global_costmap" />
         <rosparam file="$(find conventional)/config/costmap_common_params_$(arg model).yaml" command="load" ns="local_costmap" />   
@@ -26,7 +31,7 @@
     <arg name="tb3_speed" default="0.3"/>
     <arg name="file" default="cadrl_node_tb3.py"/>
     <!-- Launch neural net ros wrapper -->
-  <node pkg="sarl_star" type="sarl_star_node_tb3.py" name="sarl_star" output="screen" />
+  <node pkg="sarl_star" type="sarl_star_node_tb3.py" name="sarl_star" output="screen">
         
         <!-- Publications -->
         <remap from="~other_vels" to="other_vels"/>

@@ -1,5 +1,4 @@
-#!/usr/bin/python2.7
-# Author: Keyu Li <kyli@link.cuhk.edu.hk>
+#! /root/.python_env/rosnav/bin/python
 
 from __future__ import division
 import logging
@@ -80,8 +79,11 @@ class Human(object):
 class RobotAction(object):
     def __init__(self):
         self.Is_lg_Received = False
+        # self.Is_lg_Received = True      # debug without ob detection method
         self.IsAMCLReceived = False
+        # self.IsAMCLReceived = True    # debug without ob detection method   
         self.IsObReceived = False
+        # self.IsObReceived = True    # debug without ob detection method
         self.Is_gc_Received = False
         self.getStartPoint = False
         self.Is_lg_Reached = False
@@ -97,7 +99,8 @@ class RobotAction(object):
         self.v_pref = None
         self.theta = None
         self.humans = None
-        self.ob = None
+        # self.ob = None
+        self.ob = []    # debug without ob detection method
         self.state = None
         self.cmd_vel = Twist()
         self.plan_counter = 0
@@ -107,11 +110,19 @@ class RobotAction(object):
         self.start_py = None
 
         # ROS subscribers
-        self.robot_pose_sub = rospy.Subscriber('~pose', PoseWithCovarianceStamped, self.update_robot_pos)
-        self.robot_odom_sub = rospy.Subscriber('~pose', Odometry, self.robot_vel_on_map_calculator)
+        # self.robot_pose_sub = rospy.Subscriber('~pose', PoseWithCovarianceStamped, self.update_robot_pos)
+        # self.robot_odom_sub = rospy.Subscriber('~pose', Odometry, self.robot_vel_on_map_calculator)
+        # self.people_sub = rospy.Subscriber('~mode', PlannerMode, self.update_humans)
+        # self.goal_sub = rospy.Subscriber('~subgoal', PoseStamped, self.get_goal_on_map)
+        # self.global_costmap_sub = rospy.Subscriber('/move_base/global_costmap/costmap', OccupancyGrid, self.get_gc)
+
+        # debug without ob detection method
+        self.robot_pose_sub = rospy.Subscriber('/odom', PoseWithCovarianceStamped, self.update_robot_pos)
+        self.robot_odom_sub = rospy.Subscriber('/odom', Odometry, self.robot_vel_on_map_calculator)
         self.people_sub = rospy.Subscriber('~mode', PlannerMode, self.update_humans)
-        self.goal_sub = rospy.Subscriber('~subgoal', PoseStamped, self.get_goal_on_map)        ###原local_goal从哪获得
+        self.goal_sub = rospy.Subscriber('plan_manager/subgoal', PoseStamped, self.get_goal_on_map)
         self.global_costmap_sub = rospy.Subscriber('/move_base/global_costmap/costmap', OccupancyGrid, self.get_gc)
+        
         # ROS publishers
         self.cmd_vel_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=1)
         self.goal_marker_pub = rospy.Publisher('/goal_marker', Marker, queue_size=1)
@@ -122,7 +133,7 @@ class RobotAction(object):
     def update_robot_pos(self, msg):
         self.IsAMCLReceived = True
         self.num_pos += 1
-        position = msg.pose.pose.position         ###position内信息
+        position = msg.pose.pose.position
         orientation = msg.pose.pose.orientation
         self.px = msg.pose.pose.position.x
         self.py = msg.pose.pose.position.y
@@ -135,12 +146,12 @@ class RobotAction(object):
 
     def robot_vel_on_map_calculator(self, msg):
         vel_linear = msg.twist.twist.linear
-        listener_v.waitForTransform('/map', '/odom', rospy.Time(0), rospy.Duration(10))     ###将以机器人为坐标轴的速度信息转为以map为坐标轴的速度信息
+        listener_v.waitForTransform('/map', '/odom', rospy.Time(0), rospy.Duration(10))
         trans, rot = listener_v.lookupTransform('/map', '/odom', rospy.Time(0))
         # rotate vector 'vel_linear' by quaternion 'rot'
         q1 = rot
         q2 = list()
-        q2.append(vel_linear.x)          ###msg.linear中信息
+        q2.append(vel_linear.x)
         q2.append(vel_linear.y)
         q2.append(vel_linear.z)
         q2.append(0.0)
@@ -165,7 +176,7 @@ class RobotAction(object):
 
     def get_goal_on_map(self, msg):
         self.Is_lg_Received = True
-        # listener_g.waitForTransform('/map', '/odom', rospy.Time(0), rospy.Duration(10))      ###是否需要转换
+        # listener_g.waitForTransform('/map', '/odom', rospy.Time(0), rospy.Duration(10))
         # tfmsg = listener_g.transformPose("/map", msg)
         self.received_gx = msg.pose.position.x
         self.received_gy = msg.pose.position.y
@@ -282,7 +293,7 @@ class RobotAction(object):
 
 
         # publish command velocity
-        self.cmd_vel_pub.publish(self.cmd_vel)         ###cmd_vel格式是否正确
+        self.cmd_vel_pub.publish(self.cmd_vel)
         self.plan_counter += 1
         self.visualize_action()
 
@@ -291,9 +302,9 @@ class RobotAction(object):
 if __name__ == '__main__':
     begin_travel = False
     # set file dirs
-    model_dir = '/sarl_star_ros/CrowdNav/crowd_nav/data/output/'
-    env_config_file = '/sarl_star_ros/CrowdNav/crowd_nav/data/output/env.config'
-    policy_config_file = '/sarl_star_ros/CrowdNav/crowd_nav/data/output/policy.config'
+    model_dir = os.path.dirname(os.path.dirname(__file__)) + '/CrowdNav/crowd_nav/data/output/'
+    env_config_file = os.path.dirname(os.path.dirname(__file__)) + '/CrowdNav/crowd_nav/data/output/env.config'
+    policy_config_file = os.path.dirname(os.path.dirname(__file__)) + '/CrowdNav/crowd_nav/data/output/policy.config'
     if os.path.exists(os.path.join(model_dir, 'resumed_rl_model.pth')):
         model_weights = os.path.join(model_dir, 'resumed_rl_model.pth')
     else:

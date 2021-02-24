@@ -1,26 +1,57 @@
 <launch>
 	
     <!-- move base -->
-    <arg name="odom_frame_id"   default="odom"/>
-    <arg name="base_frame_id"   default="base_footprint"/>
-    <arg name="global_frame_id" default="map"/>
+    <!-- -->
+  <!-- Arguments -->
+    <arg name="model" default="burger"/>
+    <arg name="cmd_vel_topic" default="/cmd_vel" />  
+    <arg name="odom_topic" default="odom" />
+    <arg name="move_forward_only" default="false"/>  
+
+    <!-- move_base -->
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
+        <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" />  
+        <rosparam file="$(find conventional)/config/tb3/costmap_common_params_$(arg model).yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find conventional)/config/tb3/costmap_common_params_$(arg model).yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find conventional)/config/tb3/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find conventional)/config/tb3/global_costmap_params.yaml" command="load" />
+        <!-- <rosparam file="$(find conventional)/config/tb3/move_base_params.yaml" command="load" />  -->
+
+        <rosparam file="$(find sarl_star)/config/base_local_planner_params.yaml" command="load" />  
+        <rosparam file="$(find sarl_star)/config/dwa_local_planner_params.yaml" command="load" />  
+        <rosparam file="$(find sarl_star)/config/nav_obstacles_params.yaml" command="load" />  
+        
+    
+
+        <!-- <rosparam file="$(find conventional)/config/tb3/dwa_local_planner_params_burger.yaml" command="load" />   -->
+        <remap from="cmd_vel" to="$(arg cmd_vel_topic)"/> 
+        
+        <remap from="odom" to="$(arg odom_topic)"/>  
+        <param name="DWAPlannerROS/min_vel_x" value="0.0" if="$(arg move_forward_only)" /> 
+        <param name="controller_frequency" value="5.0" /> 
+        <param name="planner_frequency" value="0.0" />  
+
+    </node>
+    <!-- <arg name="odom_frame_id"   default="odom"/>  
+    <arg name="base_frame_id"   default="base_footprint"/>  
+    <arg name="global_frame_id" default="map"/>  
     <arg name="odom_topic" default="odom" />
     <arg name="model" default="burger"/>
 
     <node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
-        <rosparam file="$(find conventional)/config/costmap_common_params_$(arg model).yaml" command="load" ns="global_costmap" />
-        <rosparam file="$(find conventional)/config/costmap_common_params_$(arg model).yaml" command="load" ns="local_costmap" />   
-        <rosparam file="$(find conventional)/config/local_costmap_params.yaml" command="load" />
-        <rosparam file="$(find conventional)/config/global_costmap_params.yaml" command="load" />
-        <rosparam file="$(find sarl_star)/config/base_local_planner_params.yaml" command="load" />
-        <rosparam file="$(find sarl_star)/config/dwa_local_planner_params.yaml" command="load" />
-        <rosparam file="$(find sarl_star)/config/nav_obstacles_params.yaml" command="load" />
+        <rosparam file="$(find conventional)/config/tb3/costmap_common_params_$(arg model).yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find conventional)/config/tb3/costmap_common_params_$(arg model).yaml" command="load" ns="local_costmap" />   
+        <rosparam file="$(find conventional)/config/tb3/local_costmap_params.yaml" command="load" />
+        <rosparam file="$(find conventional)/config/tb3/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find sarl_star)/config/base_local_planner_params.yaml" command="load" />  
+        <rosparam file="$(find sarl_star)/config/dwa_local_planner_params.yaml" command="load" />  
+        <rosparam file="$(find sarl_star)/config/nav_obstacles_params.yaml" command="load" />  
         
-        <param name="global_costmap/global_frame" value="$(arg global_frame_id)"/>
-        <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS"/>
-        <param name="global_costmap/robot_base_frame" value="$(arg base_frame_id)"/>
-        <param name="local_costmap/global_frame" value="$(arg odom_frame_id)"/>
-        <param name="local_costmap/robot_base_frame" value="$(arg base_frame_id)"/>
+        <param name="global_costmap/global_frame" value="$(arg global_frame_id)"/>  
+        <param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS"/>  
+        <param name="global_costmap/robot_base_frame" value="$(arg base_frame_id)"/>  
+        <param name="local_costmap/global_frame" value="$(arg odom_frame_id)"/>  
+        <param name="local_costmap/robot_base_frame" value="$(arg base_frame_id)"/>  
         <param name="DWAPlannerROS/global_frame_id" value="$(arg odom_frame_id)"/>  
 
         <remap from="cmd_vel" to="navigation_velocity_smoother/raw_cmd_vel"/>
@@ -29,13 +60,13 @@
     
     
     <arg name="tb3_speed" default="0.3"/>
-    <arg name="file" default="cadrl_node_tb3.py"/>
+    <arg name="file" default="cadrl_node_tb3.py"/> -->
     <!-- Launch neural net ros wrapper -->
-  <node pkg="sarl_star" type="sarl_star_node_tb3.py" name="sarl_star" output="screen">
+    <node pkg="sarl_star" type="sarl_star_node_tb3.py" name="sarl_star" output="screen">
         
         <!-- Publications -->
         <remap from="~other_vels" to="other_vels"/>
-        <remap from="/cmd_vel_mux/input/teleop" to="/cmd_vel"/>
+        <!-- <remap from="/cmd_vel_mux/input/teleop" to="/cmd_vel"/> -->
         <remap from="~pose_marker" to="pose_marker"/>
         <remap from="~path_marker" to="path_marker"/>
         <remap from="~goal_path_marker" to="goal_path_marker"/>
@@ -53,7 +84,7 @@
         <remap from="~peds" to="ped_manager/ped_recent"/>
         
         <!-- Parameters -->
-        <param name="~tb3_speed" value="$(arg tb3_speed)"/>
+        <!-- <param name="~tb3_speed" value="$(arg tb3_speed)"/> -->
 
     </node>
 

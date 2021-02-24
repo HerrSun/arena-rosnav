@@ -147,8 +147,8 @@ class RobotAction(object):
 
     def robot_vel_on_map_calculator(self, msg):
         vel_linear = msg.twist.twist.linear
-        listener_v.waitForTransform('/map', '/odom', rospy.Time(0), rospy.Duration(10))
-        trans, rot = listener_v.lookupTransform('/map', '/odom', rospy.Time(0))
+        listener_v.waitForTransform('/map', '/base_footprint', rospy.Time(), rospy.Duration(4))
+        trans, rot = listener_v.lookupTransform('/map', '/odom', rospy.Time())
         # rotate vector 'vel_linear' by quaternion 'rot'
         q1 = rot
         q2 = list()
